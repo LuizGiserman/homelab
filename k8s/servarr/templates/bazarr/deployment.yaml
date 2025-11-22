@@ -92,6 +92,9 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.bazarr.resources | nindent 12 }}
+        {{- if .Values.bazarr.extraContainers }}
+        {{- toYaml .Values.bazarr.extraContainers | nindent 8 }}
+        {{- end }}
       {{- with .Values.bazarr.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -23,6 +23,11 @@ gluetunSidecar: |
             key: address
       - name: TZ
         value: Europe/Paris
+      - name: BLOCK_OUTSIDE_VPN
+        value: "true"
+      - name: FIREWALL
+        value: "true"
+
     volumeMounts:
       - name: tun
         mountPath: /dev/net/tun
@@ -191,7 +196,7 @@ jellyfin:
 
   extraVolumeMounts: 
     {{ tpl .Value.gluetunAdditionalMounts . }}
-    
+
   extraEnvVars: []
     #- name: MY_ENV_VAR
     #  value: my-env-var-value
@@ -1447,7 +1452,7 @@ lidarr:
 ## @param cleanuparr.persistence.additionalMounts Additional volume mounts to add to the pod.
 ##
 cleanuparr:
-  enabled: false
+  enabled: true
   replicaCount: 1
 
   image:
