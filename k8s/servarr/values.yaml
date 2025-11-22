@@ -1,43 +1,11 @@
-gluetunSidecar: |
-  - name: gluetun
-    image: qmcgaw/gluetun:latest
-    securityContext:
-      capabilities:
-        add: ["NET_ADMIN"]
-    env:
-      - name: VPN_SERVICE_PROVIDER
-        value: nordvpn
-      - name: SERVER_COUNTRIES
-        value: France
-      - name: VPN_TYPE
-        value: wireguard
-      - name: WIREGUARD_PRIVATE_KEY
-        valueFrom:
-          secretKeyRef:
-            name: gluetun-secret
-            key: privateKey
-      - name: WIREGUARD_ADDRESSES
-        valueFrom:
-          secretKeyRef:
-            name: gluetun-secret
-            key: address
-      - name: TZ
-        value: Europe/Paris
-      - name: BLOCK_OUTSIDE_VPN
-        value: "true"
-      - name: FIREWALL
-        value: "true"
 
-    volumeMounts:
-      - name: tun
-        mountPath: /dev/net/tun
   
-gluetunAdditionalVolumes: |
+gluetunAdditionalVolumes:
   - name: tun
     hostPath:
       path: /dev/net/tun
       type: CharDevice
-gluetunAdditionalMounts: |
+gluetunAdditionalMounts:
   - name: tun
     mountPath: /dev/net/tun
 
@@ -307,8 +275,35 @@ sonarr:
     strategy:
       type: Recreate
 
-  extraContainers:
-    {{ tpl .Values.gluetunSidecar . }}
+  extraInitContainers: []
+
+  extraContainers: &extra-containers
+    - name: gluetun
+      image: qmcgaw/gluetun:latest
+      securityContext:
+        capabilities:
+          add: ["NET_ADMIN"]
+      env:
+        - name: VPN_SERVICE_PROVIDER
+          value: nordvpn
+        - name: SERVER_COUNTRIES
+          value: France
+        - name: VPN_TYPE
+          value: wireguard
+        - name: WIREGUARD_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gluetun-secret
+              key: privateKey
+        - name: TZ
+          value: Europe/Paris
+        - name: BLOCK_OUTSIDE_VPN
+          value: "true"
+        - name: FIREWALL
+          value: "true"
+      volumeMounts:
+        - name: tun
+          mountPath: /dev/net/tun
 
   serviceAccount:
     create: true
@@ -389,10 +384,15 @@ sonarr:
     existingClaim: ""
     accessMode: ReadWriteOnce
     size: 800Mi
-    additionalMounts:
-      {{ tpl .Value.gluetunAdditionalMounts . }}
-    additionalVolumes:
-      {{ tpl .Value.gluetunAdditionalVolumes . }}
+    additionalMounts: &additional-mounts
+      - name: tun
+        mountPath: /dev/net/tun
+
+    additionalVolumes: &additional-volumes
+      - name: tun
+        hostPath:
+          path: /dev/net/tun
+          type: CharDevice
 
 ## @section qBittorrent parameters
 
@@ -460,8 +460,7 @@ qbittorrent:
     strategy:
       type: Recreate
 
-  extraContainers:
-    {{ tpl .Values.gluetunSidecar . }}
+  extraContainers: *extra-containers
 
   serviceAccount:
     create: true
@@ -545,10 +544,8 @@ qbittorrent:
     existingClaim: ""
     accessMode: ReadWriteOnce
     size: 800Mi
-    additionalMounts:
-      {{ tpl .Value.gluetunAdditionalMounts . }}
-    additionalVolumes:
-      {{ tpl .Value.gluetunAdditionalVolumes . }}
+    additionalMounts: *additional-mounts
+    additionalVolumes: *additional-volumes
 
 ## @section Prowlarr parameters
 
@@ -613,8 +610,7 @@ prowlarr:
     strategy:
       type: Recreate
 
-  extraContainers:
-   {{ tpl .Values.gluetunSidecar . }}
+  extraContainers: *extra-containers
 
   serviceAccount:
     create: true
@@ -694,10 +690,8 @@ prowlarr:
     existingClaim: ""
     accessMode: ReadWriteOnce
     size: 800Mi
-    additionalMounts:
-      {{ tpl .Value.gluetunAdditionalMounts . }}
-    additionalVolumes:
-      {{ tpl .Value.gluetunAdditionalVolumes . }}
+    additionalMounts: *additional-mounts
+    additionalVolumes: *additional-volumes
 
 ## @section FlareSolverr parameters
 
@@ -1024,8 +1018,7 @@ bazarr:
     strategy:
       type: Recreate
 
-  extraContainers:
-   {{ tpl .Values.gluetunSidecar . }}
+  extraContainers: *extra-containers
 
   serviceAccount:
     create: true
@@ -1103,10 +1096,8 @@ bazarr:
     existingClaim: ""
     accessMode: ReadWriteOnce
     size: 800Mi
-    additionalMounts:
-      {{ tpl .Value.gluetunAdditionalMounts . }}
-    additionalVolumes:
-      {{ tpl .Value.gluetunAdditionalVolumes . }}
+    additionalMounts: *additional-mounts
+    additionalVolumes: *additional-volumes
 
 ## @section Radarr parameters
 
@@ -1195,8 +1186,7 @@ radarr:
     #   image: busybox
     #   command: ['sh', '-c', 'echo "this is an init container"']
 
-  extraContainers:
-    {{ tpl .Values.gluetunSidecar . }}
+  extraContainers: *extra-containers
   service:
     type: ClusterIP
     port: 7878
@@ -1252,10 +1242,8 @@ radarr:
     existingClaim: ""
     accessMode: ReadWriteOnce
     size: 800Mi
-    additionalMounts:
-      {{ tpl .Value.gluetunAdditionalMounts . }}
-    additionalVolumes:
-      {{ tpl .Value.gluetunAdditionalVolumes . }}
+    additionalMounts: *additional-mounts
+    additionalVolumes: *additional-volumes
 ## @section Lidarr parameters
 
 ## @param lidarr.enabled Whether to enable Lidarr.
