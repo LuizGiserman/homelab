@@ -412,6 +412,35 @@ qbittorrent:
     strategy:
       type: Recreate
 
+  extraContainers:
+    - name: gluetun
+      image: qmcgaw/gluetun:latest
+      securityContext:
+        capabilities:
+          add: ["NET_ADMIN"]
+      env:
+        - name: VPN_SERVICE_PROVIDER
+          value: nordvpn
+        - name: SERVER_COUNTRIES
+          value: France
+        - name: VPN_TYPE
+          value: wireguard
+        - name: WIREGUARD_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gluetun-secret
+              key: privateKey
+        - name: WIREGUARD_ADDRESSES
+          valueFrom:
+            secretKeyRef:
+              name: gluetun-secret
+              key: address
+        - name: TZ
+          value: Europe/Paris
+      volumeMounts:
+        - name: tun
+          mountPath: /dev/net/tun
+
   serviceAccount:
     create: true
     annotations: {}
