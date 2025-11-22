@@ -1,3 +1,44 @@
+gluetunSidecar: |
+  - name: gluetun
+    image: qmcgaw/gluetun:latest
+    securityContext:
+      capabilities:
+        add: ["NET_ADMIN"]
+    env:
+      - name: VPN_SERVICE_PROVIDER
+        value: nordvpn
+      - name: SERVER_COUNTRIES
+        value: France
+      - name: VPN_TYPE
+        value: wireguard
+      - name: WIREGUARD_PRIVATE_KEY
+        valueFrom:
+          secretKeyRef:
+            name: gluetun-secret
+            key: privateKey
+      - name: WIREGUARD_ADDRESSES
+        valueFrom:
+          secretKeyRef:
+            name: gluetun-secret
+            key: address
+      - name: TZ
+        value: Europe/Paris
+    volumeMounts:
+      - name: tun
+        mountPath: /dev/net/tun
+  
+gluetunAdditionalVolumes: |
+  - name: tun
+    hostPath:
+      path: /dev/net/tun
+      type: CharDevice
+gluetunAdditionalMounts: |
+  - name: tun
+    mountPath: /dev/net/tun
+
+
+
+
 ## Default values for Jellyfin
 
 ## @section Jellyfin parameters
@@ -145,22 +186,20 @@ jellyfin:
 
   affinity: {}
 
-  extraVolumes: []
-    #- name: renderD129
-    #  hostPath:
-    #    path: /dev/dri/renderD129
+  extraVolumes:
+    {{ tpl .Value.gluetunAdditionalVolumes . }}
 
-  extraVolumeMounts: []
-    #- mountPath: /dev/dri/renderD129
-    #  name: renderD129
-
+  extraVolumeMounts: 
+    {{ tpl .Value.gluetunAdditionalMounts . }}
+    
   extraEnvVars: []
     #- name: MY_ENV_VAR
     #  value: my-env-var-value
 
   extraInitContainers: {}
 
-  extraContainers: {}
+  extraContainers:
+    {{ tpl .Values.gluetunSidecar . }}
 
   podSecurityContext: {}
   # Jellyfin can be run as an unprivileged user with the following settings:
@@ -210,6 +249,7 @@ jellyfin:
 ## @param sonarr.image.pullPolicy The logic of image pulling.
 ## @param sonarr.imagePullSecrets The image pull secrets to use.
 ## @param sonarr.deployment.strategy.type The deployment strategy to use.
+## @param sonarr.extraContainers Additional sidecar containers to add to the pod.
 ## @param sonarr.serviceAccount.create Whether to create a service account.
 ## @param sonarr.serviceAccount.annotations Additional annotations to add to the service account.
 ## @param sonarr.serviceAccount.name The name of the service account to use. If not set and create is true, a new service account will be created with a generated name.
@@ -263,6 +303,9 @@ sonarr:
   deployment:
     strategy:
       type: Recreate
+
+  extraContainers:
+    {{ tpl .Values.gluetunSidecar . }}
 
   serviceAccount:
     create: true
@@ -343,8 +386,10 @@ sonarr:
     existingClaim: ""
     accessMode: ReadWriteOnce
     size: 800Mi
-    additionalVolumes: []
-    additionalMounts: []
+    additionalMounts:
+      {{ tpl .Value.gluetunAdditionalMounts . }}
+    additionalVolumes:
+      {{ tpl .Value.gluetunAdditionalVolumes . }}
 
 ## @section qBittorrent parameters
 
@@ -355,7 +400,7 @@ sonarr:
 ## @param qbittorrent.image.pullPolicy The logic of image pulling.
 ## @param qbittorrent.imagePullSecrets The image pull secrets to use.
 ## @param qbittorrent.deployment.strategy.type The deployment strategy to use.
-## @param qbittorrent.extraConatiners
+## @param qbittorrent.extraContainers Additional sidecar containers to add to the pod.
 ## @param qbittorrent.serviceAccount.create Whether to create a service account.
 ## @param qbittorrent.serviceAccount.annotations Additional annotations to add to the service account.
 ## @param qbittorrent.serviceAccount.name The name of the service account to use. If not set and create is true, a new service account will be created with a generated name.
@@ -413,33 +458,7 @@ qbittorrent:
       type: Recreate
 
   extraContainers:
-    - name: gluetun
-      image: qmcgaw/gluetun:latest
-      securityContext:
-        capabilities:
-          add: ["NET_ADMIN"]
-      env:
-        - name: VPN_SERVICE_PROVIDER
-          value: nordvpn
-        - name: SERVER_COUNTRIES
-          value: France
-        - name: VPN_TYPE
-          value: wireguard
-        - name: WIREGUARD_PRIVATE_KEY
-          valueFrom:
-            secretKeyRef:
-              name: gluetun-secret
-              key: privateKey
-        - name: WIREGUARD_ADDRESSES
-          valueFrom:
-            secretKeyRef:
-              name: gluetun-secret
-              key: address
-        - name: TZ
-          value: Europe/Paris
-      volumeMounts:
-        - name: tun
-          mountPath: /dev/net/tun
+    {{ tpl .Values.gluetunSidecar . }}
 
   serviceAccount:
     create: true
@@ -523,14 +542,10 @@ qbittorrent:
     existingClaim: ""
     accessMode: ReadWriteOnce
     size: 800Mi
-    additionalVolumes:
-      - name: tun
-        hostPath:
-          path: /dev/net/tun
-          type: CharDevice
     additionalMounts:
-      - name: tun
-        mountPath: /dev/net/tun
+      {{ tpl .Value.gluetunAdditionalMounts . }}
+    additionalVolumes:
+      {{ tpl .Value.gluetunAdditionalVolumes . }}
 
 ## @section Prowlarr parameters
 
@@ -541,6 +556,7 @@ qbittorrent:
 ## @param prowlarr.image.pullPolicy The logic of image pulling.
 ## @param prowlarr.imagePullSecrets The image pull secrets to use.
 ## @param prowlarr.deployment.strategy.type The deployment strategy to use.
+## @param prowlarr.extraContainers Additional sidecar containers to add to the pod.
 ## @param prowlarr.serviceAccount.create Whether to create a service account.
 ## @param prowlarr.serviceAccount.annotations Additional annotations to add to the service account.
 ## @param prowlarr.serviceAccount.name The name of the service account to use. If not set and create is true, a new service account will be created with a generated name.
@@ -593,6 +609,9 @@ prowlarr:
   deployment:
     strategy:
       type: Recreate
+
+  extraContainers:
+   {{ tpl .Values.gluetunSidecar . }}
 
   serviceAccount:
     create: true
@@ -672,8 +691,10 @@ prowlarr:
     existingClaim: ""
     accessMode: ReadWriteOnce
     size: 800Mi
-    additionalVolumes: []
-    additionalMounts: []
+    additionalMounts:
+      {{ tpl .Value.gluetunAdditionalMounts . }}
+    additionalVolumes:
+      {{ tpl .Value.gluetunAdditionalVolumes . }}
 
 ## @section FlareSolverr parameters
 
@@ -947,6 +968,7 @@ jellyseerr:
 ## @param bazarr.image.pullPolicy The logic of image pulling.
 ## @param bazarr.imagePullSecrets The image pull secrets to use.
 ## @param bazarr.deployment.strategy.type The deployment strategy to use.
+## @param prowlarr.extraContainers Additional sidecar containers to add to the pod.
 ## @param bazarr.serviceAccount.create Whether to create a service account.
 ## @param bazarr.serviceAccount.annotations Additional annotations to add to the service account.
 ## @param bazarr.serviceAccount.name The name of the service account to use. If not set and create is true, a new service account will be created with a generated name.
@@ -998,6 +1020,9 @@ bazarr:
   deployment:
     strategy:
       type: Recreate
+
+  extraContainers:
+   {{ tpl .Values.gluetunSidecar . }}
 
   serviceAccount:
     create: true
@@ -1075,8 +1100,10 @@ bazarr:
     existingClaim: ""
     accessMode: ReadWriteOnce
     size: 800Mi
-    additionalVolumes: []
-    additionalMounts: []
+    additionalMounts:
+      {{ tpl .Value.gluetunAdditionalMounts . }}
+    additionalVolumes:
+      {{ tpl .Value.gluetunAdditionalVolumes . }}
 
 ## @section Radarr parameters
 
@@ -1087,6 +1114,7 @@ bazarr:
 ## @param radarr.image.pullPolicy The logic of image pulling.
 ## @param radarr.imagePullSecrets The image pull secrets to use.
 ## @param radarr.deployment.strategy.type The deployment strategy to use.
+## @param sonarr.extraContainers Additional sidecar containers to add to the pod.
 ## @param radarr.serviceAccount.create Whether to create a service account.
 ## @param radarr.serviceAccount.annotations Additional annotations to add to the service account.
 ## @param radarr.serviceAccount.name The name of the service account to use. If not set and create is true, a new service account will be created with a generated name.
@@ -1164,6 +1192,8 @@ radarr:
     #   image: busybox
     #   command: ['sh', '-c', 'echo "this is an init container"']
 
+  extraContainers:
+    {{ tpl .Values.gluetunSidecar . }}
   service:
     type: ClusterIP
     port: 7878
@@ -1219,9 +1249,10 @@ radarr:
     existingClaim: ""
     accessMode: ReadWriteOnce
     size: 800Mi
-    additionalVolumes: []
-    additionalMounts: []
-
+    additionalMounts:
+      {{ tpl .Value.gluetunAdditionalMounts . }}
+    additionalVolumes:
+      {{ tpl .Value.gluetunAdditionalVolumes . }}
 ## @section Lidarr parameters
 
 ## @param lidarr.enabled Whether to enable Lidarr.
@@ -1271,7 +1302,7 @@ radarr:
 ## @param lidarr.persistence.additionalMounts Additional volume mounts to add to the pod.
 ##
 lidarr:
-  enabled: true
+  enabled: false
   replicaCount: 1
 
   image:
