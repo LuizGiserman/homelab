@@ -307,6 +307,8 @@ sonarr:
           value: "10.43.0.10"
         - name: EXTRA_SUBNETS_ALLOWED
           value: 10.42.0.0/16, 10.43.0.10
+        - name: FIREWALL_INPUT_PORTS
+          value: 9696,8989
       volumeMounts:
         - name: tun
           mountPath: /dev/net/tun
