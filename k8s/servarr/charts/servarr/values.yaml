@@ -1153,8 +1153,6 @@ radarr:
     strategy:
       type: Recreate
 
-  extraContainers: *extra-containers
-
   serviceAccount:
     create: true
     annotations: {}
