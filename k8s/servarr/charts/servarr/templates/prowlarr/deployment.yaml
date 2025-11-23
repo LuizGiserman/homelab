@@ -87,6 +87,9 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.prowlarr.resources | nindent 12 }}
+        {{- if .Values.jellyfin.extraContainers }}
+        {{- toYaml .Values.jellyfin.extraContainers | nindent 8 }}
+        {{- end }}
       {{- with .Values.prowlarr.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
