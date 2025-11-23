@@ -284,6 +284,11 @@ sonarr:
     annotations: {}
     name: ""
 
+  service:
+    type: ClusterIP
+    port: 8989
+    nodePort: ""
+
   podAnnotations: {}
 
   podSecurityContext: {}
@@ -342,12 +347,6 @@ sonarr:
             sleep 5
           done
           echo "ping succesfull, exiting"
-
-
-  service:
-    type: ClusterIP
-    port: 80
-    nodePort: ""
 
   ingress:
     enabled: true
