@@ -277,9 +277,31 @@ sonarr:
 
   extraInitContainers: []
 
-  extraContainers: &extra-containers
+  extraContainers: []
+
+  serviceAccount:
+    create: true
+    annotations: {}
+    name: ""
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+    # fsGroup: 2000
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+  # -- Init Containers
+  initContainers: &extra-initcontainers
     - name: gluetun
       image: qmcgaw/gluetun:latest
+      restartPolicy: Always
       securityContext:
         capabilities:
           add: ["NET_ADMIN"]
@@ -312,27 +334,6 @@ sonarr:
       volumeMounts:
         - name: tun
           mountPath: /dev/net/tun
-
-  serviceAccount:
-    create: true
-    annotations: {}
-    name: ""
-
-  podAnnotations: {}
-
-  podSecurityContext: {}
-    # fsGroup: 2000
-
-  securityContext: {}
-    # capabilities:
-    #   drop:
-    #   - ALL
-    # readOnlyRootFilesystem: true
-    # runAsNonRoot: true
-    # runAsUser: 1000
-
-  # -- Init Containers
-  initContainers: []
 
   service:
     type: ClusterIP
@@ -482,8 +483,7 @@ qbittorrent:
     # runAsNonRoot: true
     # runAsUser: 1000
 
-  extraContainers: *extra-containers
-  initContainers: []
+  initContainers: *extra-initcontainers
     # - name: init-container
     #   image: busybox
     #   command: ['sh', '-c', 'echo "this is an init container"']
@@ -612,8 +612,6 @@ prowlarr:
     strategy:
       type: Recreate
 
-  extraContainers: *extra-containers
-
   serviceAccount:
     create: true
     annotations: {}
@@ -633,7 +631,7 @@ prowlarr:
     # runAsUser: 1000
 
   # -- Init Containers
-  initContainers: []
+  initContainers: *extra-initcontainers
 
   service:
     type: ClusterIP
@@ -1016,8 +1014,6 @@ bazarr:
     strategy:
       type: Recreate
 
-  extraContainers: *extra-containers
-
   serviceAccount:
     create: true
     annotations: {}
@@ -1036,7 +1032,7 @@ bazarr:
     # runAsNonRoot: true
     # runAsUser: 1000
 
-  initContainers: []
+  initContainers: *extra-initcontainers
 
   service:
     type: ClusterIP
@@ -1177,7 +1173,7 @@ radarr:
     # runAsNonRoot: true
     # runAsUser: 1000
 
-  initContainers: []
+  initContainers: *extra-initcontainers
 
   service:
     type: ClusterIP
