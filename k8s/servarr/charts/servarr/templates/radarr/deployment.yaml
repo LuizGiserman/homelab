@@ -106,9 +106,6 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.radarr.resources | nindent 12 }}
-        {{- if .Values.radarr.extraContainers }}
-        {{- toYaml .Values.radarr.extraContainers | nindent 8 }}
-        {{- end }}
       {{- with .Values.radarr.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

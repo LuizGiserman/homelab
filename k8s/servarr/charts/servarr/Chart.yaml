@@ -1,0 +1,5 @@
+apiVersion: v2             # v2 for Helm 3+
+name: servarr               # your chart name
+description: "Helm chart for Servarr stack with VPN sidecars"
+version: 0.1.0              # chart version
+appVersion: "1.0"           # optional, for the app version
