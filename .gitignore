@@ -1,0 +1,3 @@
+k8s/cloudflared/tunnel-token.yaml
+**/*.env
+notes.md
