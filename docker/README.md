@@ -1,40 +1,11 @@
 # How to set this up via docker
 
-## Creating env files
+## Setting up the base-services
 
 *ALL RELATIVE PATHS WILL HAVE THIS DIR (`./docker`) AS THE ORIGIN*
 
 ```
 mkdir ~/traefik_files
-```
-
-```
-touch base-services/.env
-```
-
-And edit `base-services/.env` so that you add the info below with your actual secrets.
-```
-##
-# General Variables
-##
-
-TRAEFIK_FILES=~/traefik_files
-
-##
-# Container: traefik -- Traefik variables
-##
-
-## Only used if Cloudflare is selected in labels
-# Don't remember if we need the CF_API_EMAIL and CF_API_KEY if we have the tokens below.
-# Will remove it from this file if research and find out that we don't need it.
-
-# Cloudflare account email
-CF_API_EMAIL=YOUR_EMAIL_HERE
-# Cloudflare global api key
-CF_API_KEY=YOUR_CLOUDFLARE_API_KEY
-
-CLOUDFLARE_ZONE_API_TOKEN=YOUR_CLOUDFLARE_TOKEN_WITH_ZONE_ACCESS
-CLOUDFLARE_DNS_API_TOKEN=YOUR_CLOUDFLARE_TOKEN_WITH_DNS_ACCESS
 ```
 
 Now we need to create some files in the `~/traefik_files` directory:
@@ -73,10 +44,41 @@ Now edit `~/traefik_files/traefik.toml` so that you add the info below with your
     entryPoint = "web"
 ```
 
+```
+touch base-services/.env
+```
+
+And edit `base-services/.env` so that you add the info below with your actual secrets.
+```
+##
+# General Variables
+##
+
+TRAEFIK_FILES=~/traefik_files
+
+##
+# Container: traefik -- Traefik variables
+##
+
+## Only used if Cloudflare is selected in labels
+# Don't remember if we need the CF_API_EMAIL and CF_API_KEY if we have the tokens below.
+# Will remove it from this file if research and find out that we don't need it.
+
+# Cloudflare account email
+CF_API_EMAIL=YOUR_EMAIL_HERE
+# Cloudflare global api key
+CF_API_KEY=YOUR_CLOUDFLARE_API_KEY
+
+CLOUDFLARE_ZONE_API_TOKEN=YOUR_CLOUDFLARE_TOKEN_WITH_ZONE_ACCESS
+CLOUDFLARE_DNS_API_TOKEN=YOUR_CLOUDFLARE_TOKEN_WITH_DNS_ACCESS
+```
+
+## Setting up the arr services
+
 Ok, now let's prepare the `arr` dir.
 
-We need a place where we're going to store our media.
-This means the place where we will download files and move them to their associated folder
+We need a place to store our media.
+This means the place where we'll download files to and then store them.
 In my case, I created this under `~/data/
 We need folders for:
 - movies
@@ -111,8 +113,8 @@ And add this content to it, with your own values:
 
 ```
 # Data location for storing media, downloads and configs
-DATA_DIR=_SHOULD_
-SERVICES_DIR=/home/luizgis/config
+DATA_DIR=_SHOULD_BE_THE_DATA_DIR_PATH_YOU_CREATED
+SERVICES_DIR=_SHOULD_BE_THE_CONFIG_DIR_PATH_YOU_CREATED
 
 # Timezone
 TIMEZONE=Europe/Paris
