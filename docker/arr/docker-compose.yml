@@ -1,0 +1,312 @@
+networks:
+  global:
+    external: true
+  local:
+    external: false
+  vpn:
+    driver: bridge
+
+services:
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    #security_opt: # Required for Docker versions below 20.10.10, update Docker for long term solution. Source: https://docs.linuxserver.io/faq#jammy
+    #  - seccomp=unconfined
+    networks:
+      - global
+      - local
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${SERVICES_DIR}/jellyfin:/config
+      - ./cache:/cache
+      - ${DATA_DIR}/movies:/movies
+      - ${DATA_DIR}/tv:/tv
+
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dmc-jellyfin.rule=Host(`${SUB_DOMAIN_JELLYFIN}.${DOMAIN}`)"
+      - "traefik.http.routers.dmc-jellyfin.tls=true"
+      - 'traefik.http.routers.dmc-jellyfin.tls.domains=${SUB_DOMAIN_JELLYFIN}.${DOMAIN}'
+      - "traefik.http.services.dmc-jellyfin.loadbalancer.server.port=8096"
+      - "traefik.http.routers.dmc-jellyfin.entrypoints=websecure"
+      - "traefik.http.routers.dmc-jellyfin.tls.certresolver=letsencrypt"
+      - "traefik.docker.network=global"
+
+       ## Middleware
+      - 'traefik.http.routers.dmc-jellyfin.middlewares=jellyfin-mw'
+      #### The customResponseHeaders option lists the Header names and values to apply to the response.
+      - 'traefik.http.middlewares.jellyfin-mw.headers.customResponseHeaders.X-Robots-Tag=noindex,nofollow,nosnippet,noarchive,notranslate,noimageindex'
+      #### The sslRedirect is set to true, then only allow https requests.
+      - 'traefik.http.middlewares.jellyfin-mw.headers.SSLRedirect=true'
+      #### The sslHost option is the host name that is used to redirect http requests to https.
+      #### This is the exact URL that will be redirected to, so you can remove the :9999 port if using default SSL port
+      - 'traefik.http.middlewares.jellyfin-mw.headers.SSLHost=${SUB_DOMAIN_JELLYFIN}.${DOMAIN}'
+      #### Set sslForceHost to true and set SSLHost to forced requests to use SSLHost even the ones that are already using SSL.
+      #### Note that this uses SSLHost verbatim, so add the port to SSLHost if you are using an alternate port.
+      - 'traefik.http.middlewares.jellyfin-mw.headers.SSLForceHost=true'
+      #### The stsSeconds is the max-age of the Strict-Transport-Security header. If set to 0, would NOT include the header.
+      - 'traefik.http.middlewares.jellyfin-mw.headers.STSSeconds=315360000'
+      #### The stsIncludeSubdomains is set to true, the includeSubDomains directive will be
+      #### appended to the Strict-Transport-Security header.
+      - 'traefik.http.middlewares.jellyfin-mw.headers.STSIncludeSubdomains=true'
+      #### Set stsPreload to true to have the preload flag appended to the Strict-Transport-Security header.
+      - 'traefik.http.middlewares.jellyfin-mw.headers.STSPreload=true'
+      #### Set forceSTSHeader to true, to add the STS header even when the connection is HTTP.
+      - 'traefik.http.middlewares.jellyfin-mw.headers.forceSTSHeader=true'
+      #### Set frameDeny to true to add the X-Frame-Options header with the value of DENY.
+      - 'traefik.http.middlewares.jellyfin-mw.headers.frameDeny=true'
+      #### Set contentTypeNosniff to true to add the X-Content-Type-Options header with the value nosniff.
+      - 'traefik.http.middlewares.jellyfin-mw.headers.contentTypeNosniff=true'
+      #### Set browserXssFilter to true to add the X-XSS-Protection header with the value 1; mode=block.
+      - 'traefik.http.middlewares.jellyfin-mw.headers.customresponseheaders.X-XSS-PROTECTION=1'
+      #### The customFrameOptionsValue allows the X-Frame-Options header value to be set with a custom value. This
+      #### overrides the FrameDeny option.
+      - "traefik.http.middlewares.jellyfin-mw.headers.customFrameOptionsValue='allow-from https://${SUB_DOMAIN_JELLYFIN}.${DOMAIN}'"
+      # - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto: https"
+
+
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - VPN_SERVICE_PROVIDER=nordvpn
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - SERVER_COUNTRIES=France
+    volumes:
+      - /docker/appdata/gluetun:/config
+    ports:
+      - 8080:8080 #qbittorrent webUI
+      - 30852:30852 #qbittorrent
+      - 30852:30852/udp #qbittorrent
+      - 7878:7878 #radarr
+      - 8989:8989 # sonarr
+      - 9696:9696 # prowlarr
+      - 8191:8191 #flaresolverr
+      - 8112:8112 #deluge
+      - 6881:6881 #deluge
+      - 6881:6881/udp #deluge
+      - 58846:58846 #deluge daemon (optional)
+      - 8085:8085 #sabnzbd
+      - 6767:6767 #bazarr
+    restart: always
+    networks:
+      - vpn
+
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    network_mode: "service:gluetun"
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${SERVICES_DIR}/sabnzbd:/config
+      - ${DATA_DIR}/downloads-incomplete:/downloads-incomplete #optional
+      - ${DATA_DIR}/downloads:/downloads #optional
+      - ${DATA_DIR}/tv:/tv
+      - ${DATA_DIR}/movies:/movies
+      
+    restart: unless-stopped
+
+  deluge:
+    image: lscr.io/linuxserver/deluge:latest
+    container_name: deluge
+    network_mode: "service:gluetun"
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${SERVICES_DIR}/deluge:/config
+      - ${DATA_DIR}/downloads-incomplete:/downloads-incomplete
+      - ${DATA_DIR}/downloads:/downloads
+    restart: unless-stopped
+
+  # qbittorrent:
+  #   image: lscr.io/linuxserver/qbittorrent:latest
+  #   restart: unless-stopped
+  #   network_mode: "service:gluetun"
+  #   environment:
+  #     - PUID=${ENV_PUID}
+  #     - PGID=${ENV_PGID}
+  #     - TZ=${TIMEZONE}
+  #     - WEBUI_PORT=8080
+  #   volumes:
+  #     - ${SERVICES_DIR}/qbittorrent:/config
+  #     - ${DATA_DIR}/downloads:/downloads
+  #   labels:
+  #     - "traefik.enable=false"
+  #     - "traefik.http.routers.dmc-qbittorrent.rule=Host(`${SUB_DOMAIN_QBITTORRENT}.${DOMAIN}`)"
+  #     - "traefik.http.routers.dmc-qbittorrent.tls=true"
+  #     - "traefik.http.services.dmc-qbittorrent.loadbalancer.server.port=8080"
+  #     - "traefik.http.routers.dmc-qbittorrent.tls.certresolver=letsencrypt"
+  #     - "traefik.docker.network=global"
+  #     # Basic auth
+  #     - "traefik.http.middlewares.dmc-auth.basicauth.usersfile=/.htpasswd"
+  #     - "traefik.http.routers.dmc-qbittorrent.middlewares=dmc-auth"
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
+      - TZ={TIMEZONE}
+    volumes:
+      - ${SERVICES_DIR}/radarr:/config
+      - ${DATA_DIR}/downloads:/downloads
+      - ${DATA_DIR}/movies:/movies
+    labels:
+      - "traefik.enable=false"
+      - "traefik.http.routers.dmc-radarr.rule=Host(`${SUB_DOMAIN_RADARR}.${DOMAIN}`)"
+      - "traefik.http.routers.dmc-radarr.tls=true"
+      - "traefik.http.services.dmc-radarr.loadbalancer.server.port=7878"
+      - "traefik.http.routers.dmc-radarr.tls.certresolver=letsencrypt"
+      - "traefik.docker.network=global"
+      # Basic auth
+      - "traefik.http.middlewares.dmc-auth.basicauth.usersfile=/.htpasswd"
+      - "traefik.http.routers.dmc-radarr.middlewares=dmc-auth"
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    #security_opt: # Required for Docker versions below 20.10.10, update Docker for long term solution. Source: https://docs.linuxserver.io/faq#jammy
+    #  - seccomp=unconfined
+    network_mode: "service:gluetun"
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
+      - TZ={TIMEZONE}
+    volumes:
+      - ${SERVICES_DIR}/sonarr:/config
+      - ${DATA_DIR}/downloads:/downloads
+      - ${DATA_DIR}/tv:/tv
+    labels:
+      - "traefik.enable=false"
+      - "traefik.http.routers.dmc-sonarr.rule=Host(`${SUB_DOMAIN_SONARR}.${DOMAIN}`)"
+      - "traefik.http.routers.dmc-sonarr.tls=true"
+      - "traefik.http.services.dmc-sonarr.loadbalancer.server.port=8989"
+      - "traefik.http.routers.dmc-sonarr.tls.certresolver=letsencrypt"
+      - "traefik.docker.network=global"
+      # Basic auth
+      - "traefik.http.middlewares.dmc-auth.basicauth.usersfile=/.htpasswd"
+      - "traefik.http.routers.dmc-sonarr.middlewares=dmc-auth"
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    network_mode: 'service:gluetun'
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
+      - TZ={TIMEZONE}
+    volumes:
+      - ${SERVICES_DIR}/prowlarr:/config
+    labels:
+      - "traefik.enable=false"
+      - "traefik.http.routers.dmc-prowlarr.rule=Host(`${SUB_DOMAIN_PROWLARR}.${DOMAIN}`)"
+      - "traefik.http.routers.dmc-prowlarr.tls=true"
+      - "traefik.http.services.dmc-prowlarr.loadbalancer.server.port=9696"
+      - "traefik.http.routers.dmc-prowlarr.tls.certresolver=letsencrypt"
+      - "traefik.docker.network=global"
+      # Basic auth
+      - "traefik.http.middlewares.dmc-auth.basicauth.usersfile=/.htpasswd"
+      - "traefik.http.routers.dmc-prowlarr.middlewares=dmc-auth"
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    restart: unless-stopped
+    container_name: flaresolverr
+    network_mode: "service:gluetun"
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FILE=${LOG_FILE:-none}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ={TIMEZONE}
+    volumes:
+      - ${SERVICES_DIR}/flaresolverr:/config
+    labels:
+      - "traefik.enable=false"
+
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    network_mode: "service:gluetun"
+    environment:
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
+      - TZ={TIMEZONE}
+    volumes:
+      - ${SERVICES_DIR}/config:/config
+      - ${DATA_DIR}/movies:/movies #optional
+      - ${DATA_DIR}/tv:/tv #optional
+    restart: unless-stopped
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    restart: unless-stopped
+    networks:
+      - global
+      - local
+      - vpn
+    environment:
+      - LOG_LEVEL=debug
+      - TZ={TIMEZONE}
+    volumes:
+      - ${SERVICES_DIR}/jellyseerr:/app/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dmc-jellyseerr.rule=Host(`${SUB_DOMAIN_JELLYSEERR}.${DOMAIN}`)"
+      - "traefik.http.routers.dmc-jellyseerr.tls=true"
+      - "traefik.http.services.dmc-jellyseerr.loadbalancer.server.port=5055"
+      - "traefik.http.routers.dmc-jellyseerr.tls.certresolver=letsencrypt"
+      - "traefik.docker.network=global"
+        ## Middleware
+      - 'traefik.http.routers.dmc-jellyseerr.middlewares=jellyfin-mw'
+
+
+  cleanuparr:
+    image: ghcr.io/cleanuparr/cleanuparr:latest
+    container_name: cleanuparr
+    restart: unless-stopped
+    networks:
+      - global
+      - local
+      - vpn
+    ports:
+      - "11011:11011"
+    volumes:
+      - /${SERVICES_DIR}/cleanuparr:/config
+      # Mount your downloads directory if needed
+      - ${DATA_DIR}/downloads:/downloads
+    environment:
+      - PORT=11011
+      - BASE_PATH=
+      - PUID=${ENV_PUID}
+      - PGID=${ENV_PGID}
+      - TZ={TIMEZONE}
+      - UMASK=022
+    # Health check configuration
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11011/health"]
+      interval: 30s        # Check every 30 seconds
+      timeout: 10s         # Allow up to 10 seconds for response
+      start_period: 30s    # Wait 30 seconds before first check
+      retries: 3           # Mark unhealthy after 3 consecutive failures
