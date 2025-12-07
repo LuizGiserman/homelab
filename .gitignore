@@ -3,4 +3,4 @@ k8s/cloudflared/tunnel-token.yaml
 notes.md
 **/*.htpasswd
 **/acme.json
-**/traefil.toml
+**/traefik.toml
