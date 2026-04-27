@@ -72,34 +72,37 @@ services:
 
 
   gluetun:
-    image: qmcgaw/gluetun:latest
+    image: qmcgaw/gluetun:pr-2586
     container_name: gluetun
     cap_add:
       - NET_ADMIN
     environment:
-      - VPN_SERVICE_PROVIDER=nordvpn
+      - VPN_SERVICE_PROVIDER=airvpn
       - VPN_TYPE=wireguard
       - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
-      - SERVER_COUNTRIES=France
+      - WIREGUARD_PRESHARED_KEY=${WIREGUARD_PRESHARED_KEY}
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      - SERVER_NAMES=${SERVER_NAMES}
+      - API_ENABLE=true
+      - API_PORT=8000
     volumes:
       - /docker/appdata/gluetun:/config
     ports:
-      - 8080:8080 #qbittorrent webUI
-      - 30852:30852 #qbittorrent
-      - 30852:30852/udp #qbittorrent
       - 7878:7878 #radarr
       - 8989:8989 # sonarr
       - 9696:9696 # prowlarr
       - 8191:8191 #flaresolverr
       - 8112:8112 #deluge
-      - 6881:6881 #deluge
-      - 6881:6881/udp #deluge
+      - 63040:63040 #deluge
+      - 63040:63040/udp #deluge
       - 58846:58846 #deluge daemon (optional)
       - 8085:8085 #sabnzbd
       - 6767:6767 #bazarr
     restart: always
     networks:
       - vpn
+    labels:
+       - "traefik.enable=false"
 
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
@@ -117,6 +120,8 @@ services:
       - ${DATA_DIR}/movies:/movies
       
     restart: unless-stopped
+    labels:
+       - "traefik.enable=false"
 
   deluge:
     image: lscr.io/linuxserver/deluge:latest
@@ -131,6 +136,8 @@ services:
       - ${DATA_DIR}/downloads-incomplete:/downloads-incomplete
       - ${DATA_DIR}/downloads:/downloads
     restart: unless-stopped
+    labels:
+       - "traefik.enable=false"
 
   # qbittorrent:
   #   image: lscr.io/linuxserver/qbittorrent:latest
@@ -164,6 +171,7 @@ services:
       - PUID=${ENV_PUID}
       - PGID=${ENV_PGID}
       - TZ={TIMEZONE}
+
     volumes:
       - ${SERVICES_DIR}/radarr:/config
       - ${DATA_DIR}/downloads:/downloads
@@ -257,6 +265,8 @@ services:
       - ${DATA_DIR}/movies:/movies #optional
       - ${DATA_DIR}/tv:/tv #optional
     restart: unless-stopped
+    labels:
+       - "traefik.enable=false"
 
   jellyseerr:
     image: fallenbagel/jellyseerr:latest
