@@ -45,7 +45,10 @@ services:
       - "traefik.http.routers.dmc-immich.tls.certresolver=letsencrypt"
       - "traefik.docker.network=global"
         ## Middleware
-      - 'traefik.http.routers.dmc-immich.middlewares=jellyfin-mw@docker'
+      - 'traefik.http.routers.dmc-immich.middlewares=secure-headers@docker,immich-ssl'
+      - 'traefik.http.middlewares.immich-ssl.headers.SSLHost=${SUB_DOMAIN_IMMICH}.${DOMAIN}'
+      - 'traefik.http.middlewares.immich-ssl.headers.SSLForceHost=true'
+      - "traefik.http.middlewares.immich-ssl.headers.customFrameOptionsValue='allow-from https://${SUB_DOMAIN_IMMICH}.${DOMAIN}'"
 
   immich-machine-learning:
     networks:
