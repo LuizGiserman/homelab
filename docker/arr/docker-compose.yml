@@ -38,6 +38,13 @@ services:
       - "traefik.http.routers.dmc-jellyfin.tls.certresolver=letsencrypt"
       - "traefik.docker.network=global"
 
+       ## Block /metrics from public access - Prometheus scrapes directly, never via Traefik
+      - 'traefik.http.routers.dmc-jellyfin-metrics.rule=Host(`${SUB_DOMAIN_JELLYFIN}.${DOMAIN}`) && Path(`/metrics`)'
+      - 'traefik.http.routers.dmc-jellyfin-metrics.entrypoints=websecure'
+      - 'traefik.http.routers.dmc-jellyfin-metrics.tls=true'
+      - 'traefik.http.routers.dmc-jellyfin-metrics.priority=100'
+      - 'traefik.http.routers.dmc-jellyfin-metrics.middlewares=block-metrics'
+      - 'traefik.http.middlewares.block-metrics.ipallowlist.sourcerange=255.255.255.255/32'
        ## Middleware
       - 'traefik.http.routers.dmc-jellyfin.middlewares=secure-headers@docker,jellyfin-ssl'
       - 'traefik.http.middlewares.jellyfin-ssl.headers.SSLHost=${SUB_DOMAIN_JELLYFIN}.${DOMAIN}'

@@ -1,0 +1,92 @@
+networks:
+  global:
+    external: true
+  local:
+    external: false
+
+name: monitoring
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    networks:
+      - global
+      - local
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    labels:
+      - "traefik.enable=false"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    networks:
+      - global
+      - local
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dmc-grafana.rule=Host(`${SUB_DOMAIN_GRAFANA}.${DOMAIN}`)"
+      - "traefik.http.routers.dmc-grafana.entrypoints=websecure"
+      - "traefik.http.routers.dmc-grafana.tls=true"
+      - "traefik.http.routers.dmc-grafana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dmc-grafana.loadbalancer.server.port=3000"
+      - "traefik.docker.network=global"
+      ## Middleware
+      - 'traefik.http.routers.dmc-grafana.middlewares=secure-headers@docker,grafana-ssl'
+      - 'traefik.http.middlewares.grafana-ssl.headers.SSLHost=${SUB_DOMAIN_GRAFANA}.${DOMAIN}'
+      - 'traefik.http.middlewares.grafana-ssl.headers.SSLForceHost=true'
+      - "traefik.http.middlewares.grafana-ssl.headers.customFrameOptionsValue='allow-from https://${SUB_DOMAIN_GRAFANA}.${DOMAIN}'"
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    networks:
+      - local
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    labels:
+      - "traefik.enable=false"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    privileged: true
+    networks:
+      - local
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/snap/docker/common/var-lib-docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+    labels:
+      - "traefik.enable=false"
+
+volumes:
+  prometheus_data:
+  grafana_data:

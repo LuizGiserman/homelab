@@ -1,0 +1,26 @@
+networks:
+  global:
+    external: true
+
+name: tools
+
+services:
+  omni-tools:
+    image: iib0011/omni-tools:latest
+    container_name: omni-tools
+    restart: unless-stopped
+    networks:
+      - global
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dmc-omnitools.rule=Host(`${SUB_DOMAIN_OMNITOOLS}.${DOMAIN}`)"
+      - "traefik.http.routers.dmc-omnitools.entrypoints=websecure"
+      - "traefik.http.routers.dmc-omnitools.tls=true"
+      - "traefik.http.routers.dmc-omnitools.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dmc-omnitools.loadbalancer.server.port=80"
+      - "traefik.docker.network=global"
+      ## Middleware
+      - 'traefik.http.routers.dmc-omnitools.middlewares=secure-headers@docker,omnitools-ssl'
+      - 'traefik.http.middlewares.omnitools-ssl.headers.SSLHost=${SUB_DOMAIN_OMNITOOLS}.${DOMAIN}'
+      - 'traefik.http.middlewares.omnitools-ssl.headers.SSLForceHost=true'
+      - "traefik.http.middlewares.omnitools-ssl.headers.customFrameOptionsValue='allow-from https://${SUB_DOMAIN_OMNITOOLS}.${DOMAIN}'"
