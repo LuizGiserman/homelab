@@ -1,0 +1,61 @@
+networks:
+  global:
+    external: true
+
+name: vpn
+
+services:
+  headscale:
+    container_name: headscale
+    image: headscale/headscale:0.23.0
+    command: serve
+    restart: unless-stopped
+    networks:
+      - global
+    volumes:
+      - ${HEADSCALE_FILES}/config.yaml:/etc/headscale/config.yaml:ro
+      - headscale_data:/var/lib/headscale
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dmc-headscale.rule=Host(`${SUB_DOMAIN_HEADSCALE}.${DOMAIN}`)"
+      - "traefik.http.routers.dmc-headscale.entrypoints=websecure"
+      - "traefik.http.routers.dmc-headscale.tls=true"
+      - "traefik.http.routers.dmc-headscale.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dmc-headscale.loadbalancer.server.port=8080"
+      - "traefik.docker.network=global"
+      ## Middleware
+      - 'traefik.http.routers.dmc-headscale.middlewares=secure-headers@docker,headscale-ssl'
+      - 'traefik.http.middlewares.headscale-ssl.headers.SSLHost=${SUB_DOMAIN_HEADSCALE}.${DOMAIN}'
+      - 'traefik.http.middlewares.headscale-ssl.headers.SSLForceHost=true'
+      - "traefik.http.middlewares.headscale-ssl.headers.customFrameOptionsValue='allow-from https://${SUB_DOMAIN_HEADSCALE}.${DOMAIN}'"
+
+  # Subnet router: joins the LAN into the tailnet so any authorized client
+  # can reach internal-only services without a direct exposure through Traefik.
+  # Runs on the host network so it can see and route to the real LAN.
+  tailscale-subnet-router:
+    container_name: tailscale-subnet-router
+    image: tailscale/tailscale:latest
+    hostname: homelab-router
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+    environment:
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      - TS_ACCEPT_DNS=false
+      - TS_AUTHKEY=${TAILSCALE_AUTHKEY}
+      - TS_EXTRA_ARGS=--login-server=https://${SUB_DOMAIN_HEADSCALE}.${DOMAIN} --advertise-routes=${TAILSCALE_ADVERTISE_ROUTES} --advertise-tags=tag:subnet-router
+    depends_on:
+      - headscale
+
+volumes:
+  headscale_data:
+    name: headscale_data
+  tailscale_state:
+    name: tailscale_state
