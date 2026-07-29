@@ -225,7 +225,7 @@ log:
 Now the `.env` for the stack:
 
 ```
-touch vpn/.env
+touch headscale/.env
 ```
 
 ```
@@ -259,7 +259,7 @@ Now bring up just `headscale` first (the subnet router needs an auth key
 from it before it can register):
 
 ```
-cd vpn
+cd headscale
 docker-compose up -d headscale
 ```
 
@@ -270,7 +270,7 @@ docker exec headscale headscale users create me
 docker exec headscale headscale preauthkeys create --user me --expiration 24h --reusable
 ```
 
-Copy the printed key into `TAILSCALE_AUTHKEY` in `vpn/.env`, then start the
+Copy the printed key into `TAILSCALE_AUTHKEY` in `headscale/.env`, then start the
 subnet router:
 
 ```

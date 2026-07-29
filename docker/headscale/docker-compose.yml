@@ -2,7 +2,7 @@ networks:
   global:
     external: true
 
-name: vpn
+name: headscale
 
 services:
   headscale:
