@@ -1,0 +1,128 @@
+{
+  "uid": "homelab-host-overview",
+  "title": "Homelab / Host Overview",
+  "tags": ["homelab", "node-exporter"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "title": "CPU Busy", "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 90 } ] } }, "overrides": [] },
+      "targets": [ { "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))", "refId": "A" } ]
+    },
+    {
+      "id": 2, "title": "Memory Used", "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 92 } ] } }, "overrides": [] },
+      "targets": [ { "expr": "100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))", "refId": "A" } ]
+    },
+    {
+      "id": 3, "title": "Swap Used", "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 40 }, { "color": "red", "value": 75 } ] } }, "overrides": [] },
+      "targets": [ { "expr": "100 * ((node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes) / node_memory_SwapTotal_bytes)", "refId": "A" } ]
+    },
+    {
+      "id": 4, "title": "Root FS Used (/)", "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 92 } ] } }, "overrides": [] },
+      "targets": [ { "expr": "100 * (1 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}))", "refId": "A" } ]
+    },
+    {
+      "id": 5, "title": "Media HDD Used (/mnt/hdd1)", "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 92 } ] } }, "overrides": [] },
+      "targets": [ { "expr": "100 * (1 - (node_filesystem_avail_bytes{mountpoint=\"/mnt/hdd1\"} / node_filesystem_size_bytes{mountpoint=\"/mnt/hdd1\"}))", "refId": "A" } ]
+    },
+    {
+      "id": 6, "title": "Load (1m)", "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [ { "expr": "node_load1", "refId": "A" } ]
+    },
+    {
+      "id": 7, "title": "CPU Busy %", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
+      "targets": [ { "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))", "legendFormat": "busy", "refId": "A" } ]
+    },
+    {
+      "id": 8, "title": "Memory Breakdown", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "stacking": { "mode": "normal" }, "fillOpacity": 30 } }, "overrides": [] },
+      "targets": [
+        { "expr": "node_memory_MemTotal_bytes - node_memory_MemFree_bytes - node_memory_Buffers_bytes - node_memory_Cached_bytes", "legendFormat": "used", "refId": "A" },
+        { "expr": "node_memory_Buffers_bytes + node_memory_Cached_bytes", "legendFormat": "buffers/cache (reclaimable)", "refId": "B" },
+        { "expr": "node_memory_MemFree_bytes", "legendFormat": "free", "refId": "C" }
+      ]
+    },
+    {
+      "id": 9, "title": "Disk I/O Throughput", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+      "targets": [
+        { "expr": "rate(node_disk_read_bytes_total{device=~\"sda|nvme0n1\"}[5m])", "legendFormat": "{{device}} read", "refId": "A" },
+        { "expr": "rate(node_disk_written_bytes_total{device=~\"sda|nvme0n1\"}[5m])", "legendFormat": "{{device}} write", "refId": "B" }
+      ]
+    },
+    {
+      "id": 10, "title": "Disk Busy % (time spent doing I/O)", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0 }, "overrides": [] },
+      "targets": [ { "expr": "100 * rate(node_disk_io_time_seconds_total{device=~\"sda|nvme0n1\"}[5m])", "legendFormat": "{{device}}", "refId": "A" } ]
+    },
+    {
+      "id": 11, "title": "Network Throughput", "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+      "targets": [
+        { "expr": "rate(node_network_receive_bytes_total{device!~\"lo|veth.*|br-.*|docker.*\"}[5m])", "legendFormat": "{{device}} rx", "refId": "A" },
+        { "expr": "rate(node_network_transmit_bytes_total{device!~\"lo|veth.*|br-.*|docker.*\"}[5m])", "legendFormat": "{{device}} tx", "refId": "B" }
+      ]
+    },
+    {
+      "id": 12, "title": "Filesystem Usage %", "type": "bargauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 80 }, { "color": "red", "value": 92 } ] } }, "overrides": [] },
+      "targets": [ { "expr": "100 * (1 - (node_filesystem_avail_bytes{mountpoint=~\"/|/mnt/hdd1|/boot\"} / node_filesystem_size_bytes{mountpoint=~\"/|/mnt/hdd1|/boot\"}))", "legendFormat": "{{mountpoint}}", "refId": "A" } ]
+    },
+    {
+      "id": 13, "title": "Swap Activity (pages/sec)", "type": "timeseries",
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 28 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "expr": "rate(node_vmstat_pswpin[5m])", "legendFormat": "swap in", "refId": "A" },
+        { "expr": "rate(node_vmstat_pswpout[5m])", "legendFormat": "swap out", "refId": "B" }
+      ]
+    }
+  ]
+}

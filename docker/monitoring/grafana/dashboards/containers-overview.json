@@ -1,0 +1,88 @@
+{
+  "uid": "homelab-containers-overview",
+  "title": "Homelab / Containers Overview",
+  "tags": ["homelab", "cadvisor", "docker"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "title": "Running Containers", "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [ { "expr": "count(container_last_seen{name!=\"\"})", "refId": "A" } ]
+    },
+    {
+      "id": 2, "title": "Total Container Memory", "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [ { "expr": "sum(container_memory_usage_bytes{name!=\"\"})", "refId": "A" } ]
+    },
+    {
+      "id": 3, "title": "Total Container CPU", "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 2 }, "overrides": [] },
+      "targets": [ { "expr": "sum(rate(container_cpu_usage_seconds_total{name!=\"\"}[5m]))", "refId": "A" } ]
+    },
+    {
+      "id": 4, "title": "Unhealthy / Restarting Containers", "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] },
+      "targets": [ { "expr": "count(time() - container_last_seen{name!=\"\"} > 60)", "refId": "A" } ]
+    },
+    {
+      "id": 5, "title": "Top Containers by Memory", "type": "bargauge",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [ { "expr": "topk(15, container_memory_usage_bytes{name!=\"\"})", "legendFormat": "{{name}}", "refId": "A" } ]
+    },
+    {
+      "id": 6, "title": "Container CPU %", "type": "timeseries",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["last", "max"] } },
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] },
+      "targets": [ { "expr": "sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m])) * 100", "legendFormat": "{{name}}", "refId": "A" } ]
+    },
+    {
+      "id": 7, "title": "Container Memory Usage", "type": "timeseries",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 23 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["last", "max"] } },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [ { "expr": "container_memory_usage_bytes{name!=\"\"}", "legendFormat": "{{name}}", "refId": "A" } ]
+    },
+    {
+      "id": 8, "title": "Container Disk I/O", "type": "timeseries",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["last", "max"] } },
+      "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+      "targets": [
+        { "expr": "sum by (name) (rate(container_fs_reads_bytes_total{name!=\"\"}[5m]))", "legendFormat": "{{name}} read", "refId": "A" },
+        { "expr": "sum by (name) (rate(container_fs_writes_bytes_total{name!=\"\"}[5m]))", "legendFormat": "{{name}} write", "refId": "B" }
+      ]
+    },
+    {
+      "id": 9, "title": "Container Network I/O", "type": "timeseries",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 41 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["last", "max"] } },
+      "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+      "targets": [
+        { "expr": "sum by (name) (rate(container_network_receive_bytes_total{name!=\"\"}[5m]))", "legendFormat": "{{name}} rx", "refId": "A" },
+        { "expr": "sum by (name) (rate(container_network_transmit_bytes_total{name!=\"\"}[5m]))", "legendFormat": "{{name}} tx", "refId": "B" }
+      ]
+    }
+  ]
+}
