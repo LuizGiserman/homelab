@@ -32,6 +32,8 @@ services:
       - local
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
@@ -84,6 +86,11 @@ services:
       - /dev/disk/:/dev/disk:ro
     devices:
       - /dev/kmsg
+    command:
+      # this host runs Docker via snap, whose containerd socket lives outside
+      # cadvisor's default search path, so container name/label resolution
+      # silently fails without this
+      - '-containerd=/var/run/snap.docker/containerd/containerd.sock'
     labels:
       - "traefik.enable=false"
 
