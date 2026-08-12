@@ -163,3 +163,188 @@ docker-compose up -d
 You should see all of remaining services starting.
 
 You can access them all via localhost on their ports, except for jellyfin and jellyseerr that should be accessed by your domain like `jellyseerr.yourdomain.com`
+
+## Setting up the VPN stack (Headscale + Tailscale subnet router)
+
+This gives you remote access into the LAN (and any internal-only services that
+are *not* routed through Traefik) with zero extra inbound ports beyond the
+Traefik one you already have forwarded on 80/443. `headscale` is a self-hosted
+control server (same client software as Tailscale, just pointed at your own
+server), and `tailscale-subnet-router` is a container on your Docker host that
+joins your LAN into the tailnet.
+
+First, the config directory for headscale:
+
+```
+mkdir ~/headscale_files
+touch ~/headscale_files/config.yaml
+```
+
+Edit `~/headscale_files/config.yaml`. This is a minimal config, verified
+against `headscale/headscale:0.23.0` — cross-check it against the
+[official example](https://github.com/juanfont/headscale/blob/v0.23.0/config-example.yaml)
+if you use a different tag, since the schema does change between releases
+(notably, older guides reference a top-level `private_key_path` — that field
+was removed; only `noise.private_key_path` exists now):
+
+```yaml
+server_url: https://headscale.YOUR_DOMAIN_WITHOUT_THE_WWW
+listen_addr: 0.0.0.0:8080
+metrics_listen_addr: 127.0.0.1:9090
+grpc_listen_addr: 127.0.0.1:50443
+grpc_allow_insecure: false
+
+noise:
+  private_key_path: /var/lib/headscale/noise_private.key
+
+prefixes:
+  v6: fd7a:115c:a1e0::/48
+  v4: 100.64.0.0/10
+  allocation: sequential
+
+derp:
+  server:
+    enabled: false
+  urls:
+    - https://controlplane.tailscale.com/derpmap/default
+  paths: []
+  auto_update_enabled: true
+  update_frequency: 24h
+
+disable_check_updates: true
+ephemeral_node_inactivity_timeout: 30m
+
+database:
+  type: sqlite
+  sqlite:
+    path: /var/lib/headscale/db.sqlite
+    write_ahead_log: true
+
+# TLS is terminated by Traefik in front of this container; headscale itself
+# listens on plain HTTP on the docker network, hence the fields below stay empty.
+acme_url: https://acme-v02.api.letsencrypt.org/directory
+acme_email: ""
+tls_letsencrypt_hostname: ""
+tls_cert_path: ""
+tls_key_path: ""
+
+log:
+  format: text
+  level: info
+
+policy:
+  mode: file
+  path: ""
+
+dns:
+  magic_dns: true
+  base_domain: ts.YOUR_DOMAIN_WITHOUT_THE_WWW
+  nameservers:
+    global:
+      - 1.1.1.1
+      - 1.0.0.1
+    split: {}
+  search_domains: []
+  extra_records: []
+
+unix_socket: /var/run/headscale/headscale.sock
+unix_socket_permission: "0770"
+```
+
+Now the `.env` for the stack:
+
+```
+touch headscale/.env
+```
+
+```
+# Domain (same as your other stacks)
+DOMAIN=YOUR_DOMAIN_WITHOUT_THE_WWW.
+SUB_DOMAIN_HEADSCALE=headscale
+
+# Path to the config directory created above
+HEADSCALE_FILES=~/headscale_files
+
+# CIDR of your real LAN, e.g. 192.168.1.0/24 -- this is what gets
+# advertised into the tailnet so clients can reach internal-only services.
+TAILSCALE_ADVERTISE_ROUTES=YOUR_LAN_CIDR
+
+# Filled in after headscale is up and a preauth key has been created (see below).
+# Leave blank for the very first `docker-compose up`.
+TAILSCALE_AUTHKEY=
+```
+
+Add a DNS record for `headscale.yourdomain.com` pointing at your public IP,
+same as your other subdomains.
+
+One-time host change so the subnet router can actually forward LAN traffic
+(check first — it's `1` by default on some distros already):
+
+```
+cat /proc/sys/net/ipv4/ip_forward
+# if it prints 0:
+echo 'net.ipv4.ip_forward = 1' | sudo tee /etc/sysctl.d/99-tailscale.conf
+sudo sysctl -p /etc/sysctl.d/99-tailscale.conf
+```
+
+Now bring up just `headscale` first (the subnet router needs an auth key
+from it before it can register):
+
+```
+cd headscale
+docker-compose up -d headscale
+```
+
+Create a user and a preauth key. Headscale usernames become part of a DNS
+name (MagicDNS), so they must be lowercase letters/numbers/hyphens only —
+no underscores or other characters:
+
+```
+docker exec headscale headscale users create me
+docker exec headscale headscale preauthkeys create --user me --expiration 24h --reusable --tags tag:subnet-router
+```
+
+Copy the printed key into `TAILSCALE_AUTHKEY` in `headscale/.env`, then start the
+subnet router:
+
+```
+docker-compose up -d tailscale-subnet-router
+```
+
+Approve the advertised LAN route (it won't route traffic until you do this):
+
+```
+docker exec headscale headscale routes list
+docker exec headscale headscale routes enable -r <ROUTE_ID_FROM_ABOVE>
+```
+
+### Connecting a laptop or phone
+
+Install the official Tailscale client, then point it at your own control
+server instead of Tailscale's:
+
+- **Desktop/CLI**: `tailscale up --login-server=https://headscale.yourdomain.com --accept-routes`
+  - If you didn't use an authkey, it prints a `headscale nodes register --user me --key nodekey:...`
+    command — run that on the server to approve the device.
+- **Mobile (iOS/Android)**: in the Tailscale app, before logging in, look for
+  "use an alternate/custom coordination server" and enter
+  `https://headscale.yourdomain.com`. In practice the mobile app doesn't
+  offer a field to paste a preauth key — it always does the interactive
+  flow, showing a command to run on the server that looks like
+  `headscale nodes register --user USERNAME --key mkey:...` (note `mkey:`,
+  not `nodekey:`, and `USERNAME` is a literal placeholder the app doesn't
+  fill in — substitute your actual headscale user). Run that command
+  (via `docker exec headscale ...`) to approve the device. After
+  connecting, make sure "use subnet routes" is enabled for this device in
+  the app so LAN traffic actually gets routed through the tunnel.
+
+Once connected, your device can reach anything on `TAILSCALE_ADVERTISE_ROUTES`
+directly by its LAN IP — no Traefik route or public DNS entry needed for
+internal-only services.
+
+**Note on key expiry:** a preauth key's expiration only limits how long that
+key is valid for *new* registrations — it does not force already-registered
+devices to periodically re-authenticate. For actual recurring re-auth of
+connected devices, headscale needs to be configured with OIDC login (e.g.
+via Google, GitHub, or a self-hosted provider like Authentik) and an
+`oidc.expiry` value, instead of (or alongside) preauth keys.
